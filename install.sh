@@ -808,7 +808,7 @@ check_prerequisites() {
 
     local target_driver_version="${REQUESTED_DRIVER_VERSION:-$driver_version}"
     local target_hailort_version="${REQUESTED_HAILORT_VERSION:-$hailort_version}"
-    local target_tappas_version="${REQUESTED_TAPPAS_VERSION:-$tappas_version}"
+    local target_tappas_version="${REQUESTED_TAPPAS_VERSION:-${REQUESTED_STACK_VERSION:-$tappas_version}}"
 
     # Determine Model Zoo version based on architecture and target HailoRT line
     if [[ -n "${HAILO_ARCH:-}" && "${HAILO_ARCH}" != "unknown" ]]; then
@@ -827,7 +827,7 @@ check_prerequisites() {
     fi
 
     # Optional in-place upgrade/update of existing system packages
-    if [[ -n "${REQUESTED_DRIVER_VERSION}${REQUESTED_HAILORT_VERSION}${REQUESTED_TAPPAS_VERSION}${BASE_URL_OVERRIDE}" ]]; then
+    if [[ -n "${REQUESTED_DRIVER_VERSION}${REQUESTED_HAILORT_VERSION}${REQUESTED_TAPPAS_VERSION}${REQUESTED_STACK_VERSION}${BASE_URL_OVERRIDE}" ]]; then
         local arch_arg=""
         case "${HAILO_ARCH:-}" in
             hailo8|hailo8l) arch_arg="hailo8" ;;
@@ -842,8 +842,9 @@ check_prerequisites() {
         local update_flags=""
         [[ -n "${REQUESTED_DRIVER_VERSION:-}" ]] && update_flags="${update_flags} --driver-version ${REQUESTED_DRIVER_VERSION}"
         [[ -n "${REQUESTED_HAILORT_VERSION:-}" ]] && update_flags="${update_flags} --hailort-version ${REQUESTED_HAILORT_VERSION}"
-        if [[ -n "${REQUESTED_TAPPAS_VERSION:-}" ]]; then
-            update_flags="${update_flags} --tappas-core-version ${REQUESTED_TAPPAS_VERSION}"
+        local effective_requested_tappas="${REQUESTED_TAPPAS_VERSION:-${REQUESTED_STACK_VERSION:-}}"
+        if [[ -n "${effective_requested_tappas}" ]]; then
+            update_flags="${update_flags} --tappas-core-version ${effective_requested_tappas}"
         fi
         [[ -n "${BASE_URL_OVERRIDE:-}" ]] && update_flags="${update_flags} --base-url ${BASE_URL_OVERRIDE}"
         if [[ -n "${REQUESTED_MODEL_ZOO_VERSION:-}" && "${arch_arg}" == "hailo10h" ]]; then
@@ -1182,7 +1183,7 @@ install_python_packages() {
             esac
 
             local hailort_for_python_install="${REQUESTED_HAILORT_VERSION:-${HAILORT_VERSION}}"
-            local tappas_for_python_install="${REQUESTED_TAPPAS_VERSION:-}"
+            local tappas_for_python_install="${REQUESTED_TAPPAS_VERSION:-${REQUESTED_STACK_VERSION:-}}"
             if [[ "${INSTALL_HAILORT}" == true && -n "${hailort_for_python_install}" && "${hailort_for_python_install}" != "-1" ]]; then
                 flags="${flags} --hailort-version ${hailort_for_python_install}"
                 log_debug "Installing HailoRT version: ${hailort_for_python_install}"
