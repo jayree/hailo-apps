@@ -62,6 +62,7 @@ REQUESTED_DRIVER_VERSION=""
 REQUESTED_HAILORT_VERSION=""
 REQUESTED_TAPPAS_VERSION=""
 REQUESTED_MODEL_ZOO_VERSION=""
+REQUESTED_STACK_VERSION=""
 
 # Configuration variables (populated from config.yaml)
 VENV_NAME=""
@@ -586,6 +587,7 @@ ${BOLD}OPTIONS:${NC}
     --no-tappas-required        Skip TAPPAS checks, Python TAPPAS install, compile, and post_install
                                 (downloads resources directly, no C++ compilation)
     --driver-version VER        Target Hailo PCI driver version for upgrade/install
+    --stack-version VER         Convenience flag: sets driver/hailort/tappas to VER
     --hailort-version VER       Target HailoRT version for upgrade/install
     --tappas-version VER        Target TAPPAS Core version for upgrade/install
     --model-zoo-version VER     Override Model Zoo version used for resource downloads
@@ -659,6 +661,10 @@ parse_arguments() {
                 REQUESTED_DRIVER_VERSION="$2"
                 shift 2
                 ;;
+            --stack-version)
+                REQUESTED_STACK_VERSION="$2"
+                shift 2
+                ;;
             --hailort-version)
                 REQUESTED_HAILORT_VERSION="$2"
                 shift 2
@@ -690,6 +696,20 @@ parse_arguments() {
                 ;;
         esac
     done
+
+    # Convenience mapping for homogeneous version stacks
+    if [[ -n "${REQUESTED_STACK_VERSION:-}" ]]; then
+        [[ -z "${REQUESTED_DRIVER_VERSION:-}" ]] && REQUESTED_DRIVER_VERSION="${REQUESTED_STACK_VERSION}"
+        [[ -z "${REQUESTED_HAILORT_VERSION:-}" ]] && REQUESTED_HAILORT_VERSION="${REQUESTED_STACK_VERSION}"
+        [[ -z "${REQUESTED_TAPPAS_VERSION:-}" ]] && REQUESTED_TAPPAS_VERSION="${REQUESTED_STACK_VERSION}"
+        if [[ -z "${REQUESTED_MODEL_ZOO_VERSION:-}" ]]; then
+            if [[ "${REQUESTED_STACK_VERSION}" =~ ^([0-9]+)\.([0-9]+)\.[0-9]+$ ]]; then
+                REQUESTED_MODEL_ZOO_VERSION="v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.0"
+            else
+                REQUESTED_MODEL_ZOO_VERSION="${REQUESTED_STACK_VERSION}"
+            fi
+        fi
+    fi
 }
 
 #===============================================================================
