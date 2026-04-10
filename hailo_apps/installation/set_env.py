@@ -19,6 +19,7 @@ Environment Variables Set:
 
 import argparse
 import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import Dict, Optional
@@ -152,10 +153,31 @@ def _write_env_file(env_path: Path, env_vars: Dict[str, Optional[str]]) -> None:
 
 def _get_hailort_version() -> str:
     """Get installed HailoRT version."""
-    pkg_name = get_hailort_package_name()
-    version = detect_system_pkg_version(pkg_name)
-    if version:
-        return version
+    pkg_candidates = []
+    detected_pkg_name = get_hailort_package_name()
+    if detected_pkg_name:
+        pkg_candidates.append(detected_pkg_name)
+    # Be permissive on package naming differences across platforms/images
+    for fallback_pkg in ("hailort", "h10-hailort"):
+        if fallback_pkg not in pkg_candidates:
+            pkg_candidates.append(fallback_pkg)
+
+    for pkg_name in pkg_candidates:
+        version = detect_system_pkg_version(pkg_name)
+        if version:
+            hailo_logger.info(f"Detected HailoRT version from package '{pkg_name}': {version}")
+            return version
+
+    # Final fallback: hailortcli --version (if package naming differs but binary exists)
+    try:
+        output = subprocess.check_output(["hailortcli", "--version"], stderr=subprocess.STDOUT, text=True)
+        for token in output.replace(",", " ").split():
+            if token and token[0].isdigit():
+                hailo_logger.info(f"Detected HailoRT version from hailortcli: {token}")
+                return token
+    except Exception:
+        pass
+
     hailo_logger.error("HailoRT version not detected. Is HailoRT installed?")
     sys.exit(1)
 
