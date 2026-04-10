@@ -809,6 +809,7 @@ check_prerequisites() {
     local target_driver_version="${REQUESTED_DRIVER_VERSION:-$driver_version}"
     local target_hailort_version="${REQUESTED_HAILORT_VERSION:-$hailort_version}"
     local target_tappas_version="${REQUESTED_TAPPAS_VERSION:-${REQUESTED_STACK_VERSION:-$tappas_version}}"
+    local effective_model_zoo_request="${REQUESTED_MODEL_ZOO_VERSION:-}"
 
     # Determine Model Zoo version based on architecture and target HailoRT line
     if [[ -n "${HAILO_ARCH:-}" && "${HAILO_ARCH}" != "unknown" ]]; then
@@ -818,11 +819,18 @@ check_prerequisites() {
         HAILORT_VERSION="${previous_hailort_version}"
     fi
 
-    if [[ -n "${REQUESTED_MODEL_ZOO_VERSION:-}" ]]; then
-        if [[ "${REQUESTED_MODEL_ZOO_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            MODEL_ZOO_VER="v${REQUESTED_MODEL_ZOO_VERSION}"
+    # If not explicitly requested, derive model-zoo for H10 from requested stack/hailort target
+    if [[ -z "${effective_model_zoo_request}" && "${HAILO_ARCH:-}" == "hailo10h" ]]; then
+        if [[ "${target_hailort_version}" =~ ^([0-9]+)\.([0-9]+)\.[0-9]+$ ]]; then
+            effective_model_zoo_request="v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.0"
+        fi
+    fi
+
+    if [[ -n "${effective_model_zoo_request}" ]]; then
+        if [[ "${effective_model_zoo_request}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            MODEL_ZOO_VER="v${effective_model_zoo_request}"
         else
-            MODEL_ZOO_VER="${REQUESTED_MODEL_ZOO_VERSION}"
+            MODEL_ZOO_VER="${effective_model_zoo_request}"
         fi
     fi
 
@@ -847,8 +855,8 @@ check_prerequisites() {
             update_flags="${update_flags} --tappas-core-version ${effective_requested_tappas}"
         fi
         [[ -n "${BASE_URL_OVERRIDE:-}" ]] && update_flags="${update_flags} --base-url ${BASE_URL_OVERRIDE}"
-        if [[ -n "${REQUESTED_MODEL_ZOO_VERSION:-}" && "${arch_arg}" == "hailo10h" ]]; then
-            local gen_ai_model_zoo_pkg_ver="${REQUESTED_MODEL_ZOO_VERSION#v}"
+        if [[ -n "${effective_model_zoo_request:-}" && "${arch_arg}" == "hailo10h" ]]; then
+            local gen_ai_model_zoo_pkg_ver="${effective_model_zoo_request#v}"
             update_flags="${update_flags} --gen-ai-model-zoo-version ${gen_ai_model_zoo_pkg_ver}"
         fi
 
