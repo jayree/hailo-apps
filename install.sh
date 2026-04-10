@@ -58,6 +58,7 @@ NO_TAPPAS_REQUIRED=false
 PYHAILORT_PATH=""
 PYTAPPAS_PATH=""
 BASE_URL=""
+VERSION_OVERRIDE=""
 
 # Configuration variables (populated from config.yaml)
 VENV_NAME=""
@@ -583,6 +584,8 @@ ${BOLD}OPTIONS:${NC}
     -pt, --pytappas PATH        Path to custom PyTappas wheel file
     --all                       Download all available models/resources
     --base-url URL              Override Python wheel BASE_URL (e.g. http://dev-public.hailo.ai/2025_12)
+    --version VER               Override package version for downstream installer scripts
+                                (currently forwarded as --tappas-core-version VER)
     -x, --no-install            Skip Python package installation
     --no-system-python          Don't use system site-packages in venv
     --no-tappas-required        Skip TAPPAS checks, Python TAPPAS install, compile, and post_install
@@ -599,6 +602,7 @@ ${BOLD}EXAMPLES:${NC}
     sudo $SCRIPT_NAME --dry-run           # Preview what would be done
     sudo $SCRIPT_NAME --all               # Install with all models
     sudo $SCRIPT_NAME --base-url http://dev-public.hailo.ai/2025_12
+    sudo $SCRIPT_NAME --version 5.3.0
     sudo $SCRIPT_NAME -x                  # Skip Python package installation
     sudo $SCRIPT_NAME -n my_venv --all    # Custom venv name + all models
 
@@ -645,6 +649,14 @@ parse_arguments() {
                     exit 1
                 fi
                 BASE_URL="$2"
+                shift 2
+                ;;
+            --version)
+                if [[ -z "${2:-}" ]]; then
+                    log_error "--version requires a version value"
+                    exit 1
+                fi
+                VERSION_OVERRIDE="$2"
                 shift 2
                 ;;
             -x|--no-install)
@@ -1096,6 +1108,10 @@ install_python_packages() {
                 flags="${flags} --base-url ${BASE_URL}"
                 log_debug "Using Python wheel BASE_URL override: ${BASE_URL}"
             fi
+            if [[ -n "${VERSION_OVERRIDE}" ]]; then
+                flags="${flags} --tappas-core-version ${VERSION_OVERRIDE}"
+                log_debug "Using TAPPAS core version override: ${VERSION_OVERRIDE}"
+            fi
             if [[ "${NO_TAPPAS_REQUIRED}" == true ]]; then
                 flags="${flags} --no-tappas"
             fi
@@ -1531,6 +1547,9 @@ main() {
     log_info "  Resources Root: ${RESOURCES_ROOT}"
     if [[ -n "${BASE_URL}" ]]; then
         log_info "  Python Wheel BASE_URL Override: ${BASE_URL}"
+    fi
+    if [[ -n "${VERSION_OVERRIDE}" ]]; then
+        log_info "  Version Override (--version): ${VERSION_OVERRIDE}"
     fi
     log_info "  System Site-Packages: ${USE_SYSTEM_SITE_PACKAGES}"
     log_info "  Log File: ${LOG_FILE}"
