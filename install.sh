@@ -63,6 +63,7 @@ REQUESTED_HAILORT_VERSION=""
 REQUESTED_TAPPAS_VERSION=""
 REQUESTED_MODEL_ZOO_VERSION=""
 REQUESTED_STACK_VERSION=""
+PIP_CONFLICT_FLAGS="--no-warn-conflicts"
 
 # Configuration variables (populated from config.yaml)
 VENV_NAME=""
@@ -1108,12 +1109,12 @@ install_python_packages() {
 
     if [[ "${DRY_RUN}" == true ]]; then
         log_dry_run "source ${venv_activate}"
-        log_dry_run "pip install --upgrade pip setuptools wheel"
-        [[ -n "$PYHAILORT_PATH" ]] && log_dry_run "pip install '${PYHAILORT_PATH}'"
+        log_dry_run "pip install ${PIP_CONFLICT_FLAGS} --upgrade pip setuptools wheel"
+        [[ -n "$PYHAILORT_PATH" ]] && log_dry_run "pip install ${PIP_CONFLICT_FLAGS} '${PYHAILORT_PATH}'"
         if [[ -n "$PYTAPPAS_PATH" && "${NO_TAPPAS_REQUIRED}" != true ]]; then
-            log_dry_run "pip install '${PYTAPPAS_PATH}'"
+            log_dry_run "pip install ${PIP_CONFLICT_FLAGS} '${PYTAPPAS_PATH}'"
         fi
-        log_dry_run "pip install -e ."
+        log_dry_run "pip install ${PIP_CONFLICT_FLAGS} -e ."
         record_step_result "SKIPPED" "Dry-run mode"
         return 0
     fi
@@ -1126,7 +1127,7 @@ install_python_packages() {
             record_step_result "FAILED" "PyHailoRT wheel not found"
             return 1
         fi
-        if ! run_as_user bash -c "source '${venv_activate}' && pip install '${PYHAILORT_PATH}'"; then
+        if ! run_as_user bash -c "source '${venv_activate}' && pip install ${PIP_CONFLICT_FLAGS} '${PYHAILORT_PATH}'"; then
             log_error "Failed to install PyHailoRT wheel"
             record_step_result "FAILED" "PyHailoRT install failed"
             return 1
@@ -1148,7 +1149,7 @@ install_python_packages() {
             record_step_result "FAILED" "PyTappas wheel not found"
             return 1
         fi
-        if ! run_as_user bash -c "source '${venv_activate}' && pip install '${PYTAPPAS_PATH}'"; then
+        if ! run_as_user bash -c "source '${venv_activate}' && pip install ${PIP_CONFLICT_FLAGS} '${PYTAPPAS_PATH}'"; then
             log_error "Failed to install PyTappas wheel"
             record_step_result "FAILED" "PyTappas install failed"
             return 1
@@ -1211,13 +1212,13 @@ install_python_packages() {
 
     # Upgrade pip/setuptools/wheel
     log_info "Upgrading pip, setuptools, and wheel..."
-    if ! run_as_user bash -c "source '${venv_activate}' && python3 -m pip install --upgrade pip setuptools wheel"; then
+    if ! run_as_user bash -c "source '${venv_activate}' && python3 -m pip install ${PIP_CONFLICT_FLAGS} --upgrade pip setuptools wheel"; then
         log_warning "pip upgrade had issues (continuing anyway)"
     fi
 
     # Install the hailo_apps package in editable mode
     log_info "Installing hailo_apps package (editable mode)..."
-    if ! run_as_user bash -c "source '${venv_activate}' && pip install -e '${SCRIPT_DIR}'"; then
+    if ! run_as_user bash -c "source '${venv_activate}' && pip install ${PIP_CONFLICT_FLAGS} -e '${SCRIPT_DIR}'"; then
         log_error "Failed to install hailo_apps package"
         log_info "Troubleshooting:"
         log_info "  • Check setup.py or pyproject.toml exists"
