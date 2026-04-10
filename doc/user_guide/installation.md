@@ -377,7 +377,7 @@ The script downloads and installs all 5 packages:
 | `--driver-version VER` | Override Hailo PCI driver version |
 | `--hailort-version VER` | Override HailoRT version |
 | `--tappas-core-version VER` | Override TAPPAS Core version |
-| `--gen-ai-model-zoo-version VER` | Installs `hailo_gen_ai_model_zoo_<VER>_arm64.deb` (ARM64 only) |
+| `--model-zoo-version VER` | Installs `hailo_gen_ai_model_zoo_<VER>_arm64.deb` (ARM64 only) |
 | `--base-url URL` | Override package server base URL |
 | `--download-only` | Download packages without installing |
 | `--output-dir DIR` | Change download location (default: `/usr/local/hailo/resources/packages`) |

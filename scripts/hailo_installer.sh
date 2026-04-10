@@ -62,7 +62,7 @@ Options:
   -r, --hailort-version VER      Override HailoRT version
   -d, --driver-version VER       Override driver version (default: same as HailoRT)
   -t, --tappas-core-version VER  Override TAPPAS Core version
-  -m, --gen-ai-model-zoo-version VER  Install hailo_gen_ai_model_zoo deb (ARM64 only)
+  -m, --model-zoo-version VER    Install hailo_gen_ai_model_zoo deb (ARM64 only)
   -b, --base-url URL             Override base URL (example: http://dev-public.hailo.ai/2025_12)
   -n, --venv-name NAME            Virtualenv name (install mode only) [default: $VENV_NAME]
   -H, --no-hailort                Skip HailoRT download/install
@@ -139,9 +139,9 @@ while [[ "$#" -gt 0 ]]; do
             TAPPAS_CORE_VERSION="$2"
             shift 2
             ;;
-        -m|--gen-ai-model-zoo-version)
+        -m|--model-zoo-version|--gen-ai-model-zoo-version)
             if [[ $# -lt 2 ]]; then
-                echo "Error: --gen-ai-model-zoo-version requires a value"
+                echo "Error: --model-zoo-version requires a value"
                 exit 1
             fi
             GEN_AI_MODEL_ZOO_VERSION="$2"
@@ -384,7 +384,7 @@ case "$ARCH" in
   x86_64|amd64)
     echo "Configuring AMD64 package names..."
     if [[ -n "$GEN_AI_MODEL_ZOO_VERSION" ]]; then
-      echo "Warning: --gen-ai-model-zoo-version is ARM64-only. Skipping on AMD64."
+      echo "Warning: --model-zoo-version is ARM64-only. Skipping on AMD64."
     fi
     if [[ "$NO_HAILORT" != "true" ]]; then
       ARCH_FILES+=("hailort_${HAILORT_VERSION}_amd64.deb")

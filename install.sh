@@ -857,7 +857,7 @@ check_prerequisites() {
         [[ -n "${BASE_URL_OVERRIDE:-}" ]] && update_flags="${update_flags} --base-url ${BASE_URL_OVERRIDE}"
         if [[ -n "${effective_model_zoo_request:-}" && "${arch_arg}" == "hailo10h" ]]; then
             local gen_ai_model_zoo_pkg_ver="${effective_model_zoo_request#v}"
-            update_flags="${update_flags} --gen-ai-model-zoo-version ${gen_ai_model_zoo_pkg_ver}"
+            update_flags="${update_flags} --model-zoo-version ${gen_ai_model_zoo_pkg_ver}"
         fi
 
         local installer_script="${SCRIPT_DIR}/scripts/hailo_installer.sh"
