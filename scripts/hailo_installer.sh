@@ -243,7 +243,7 @@ install_file() {
 
   echo "Installing $file..."
   if [[ "$file" == *.deb ]]; then
-    sudo apt install -y "$path"
+    sudo apt install -y --reinstall "$path"
   else
     echo "Unknown file type: $file"
   fi

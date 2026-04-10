@@ -583,7 +583,8 @@ ${BOLD}OPTIONS:${NC}
     -ph, --pyhailort PATH       Path to custom PyHailoRT wheel file
     -pt, --pytappas PATH        Path to custom PyTappas wheel file
     --all                       Download all available models/resources
-    --base-url URL              Override Python wheel BASE_URL (e.g. http://dev-public.hailo.ai/2025_12)
+    --base-url URL              Override BASE_URL for downstream installer scripts
+                                (e.g. http://dev-public.hailo.ai/2025_12)
     --version VER               Override package version for downstream installer scripts
                                 (currently forwarded as --tappas-core-version VER)
     -x, --no-install            Skip Python package installation
@@ -1106,7 +1107,7 @@ install_python_packages() {
             fi
             if [[ -n "${BASE_URL}" ]]; then
                 flags="${flags} --base-url ${BASE_URL}"
-                log_debug "Using Python wheel BASE_URL override: ${BASE_URL}"
+                log_debug "Using BASE_URL override: ${BASE_URL}"
             fi
             if [[ -n "${VERSION_OVERRIDE}" ]]; then
                 flags="${flags} --tappas-core-version ${VERSION_OVERRIDE}"
@@ -1546,7 +1547,7 @@ main() {
     log_info "  Download Group: ${DOWNLOAD_GROUP}"
     log_info "  Resources Root: ${RESOURCES_ROOT}"
     if [[ -n "${BASE_URL}" ]]; then
-        log_info "  Python Wheel BASE_URL Override: ${BASE_URL}"
+        log_info "  BASE_URL Override: ${BASE_URL}"
     fi
     if [[ -n "${VERSION_OVERRIDE}" ]]; then
         log_info "  Version Override (--version): ${VERSION_OVERRIDE}"
