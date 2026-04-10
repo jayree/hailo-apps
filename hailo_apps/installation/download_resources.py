@@ -37,7 +37,6 @@ from hailo_apps.config.config_manager import get_images_for_app, get_videos_for_
 
 from hailo_apps.python.core.common.core import load_environment
 from hailo_apps.python.core.common.defines import (
-    BASE_URL_ENV_KEY,
     DEFAULT_RESOURCES_CONFIG_PATH,
     HAILO8_ARCH,
     HAILO8L_ARCH,
@@ -117,10 +116,6 @@ class DownloadResult:
 # =============================================================================
 # Utility Functions
 # =============================================================================
-
-def _resources_base_url() -> str:
-    """Get effective resources base URL (supports runtime BASE_URL override)."""
-    return os.getenv(BASE_URL_ENV_KEY, S3_RESOURCES_BASE_URL).rstrip("/")
 
 def is_none_value(value) -> bool:
     """Check if a value represents None (handles YAML None parsing)."""
@@ -509,10 +504,10 @@ class ResourceDownloader:
         # Build URL based on source
         if source == "s3":
             s3_arch = map_arch_to_s3_path(self.hailo_arch)
-            url = f"{_resources_base_url()}/hefs/{s3_arch}/{name}{HAILO_FILE_EXTENSION}"
+            url = f"{S3_RESOURCES_BASE_URL}/hefs/{s3_arch}/{name}{HAILO_FILE_EXTENSION}"
             if test_url(url=url):
                 return url
-            return f"{_resources_base_url()}/hefs/{s3_arch}/{name}{HAILO_FILE_EXTENSION}"
+            return f"{S3_RESOURCES_BASE_URL}/hefs/{s3_arch}/{name}{HAILO_FILE_EXTENSION}"
         elif source == "mz":
             url = f"{MODEL_ZOO_URL}/{self.model_zoo_version}/{self.download_arch}/{name}{HAILO_FILE_EXTENSION}"
             test_url(url=url)  # Print URL validation info
@@ -575,7 +570,7 @@ class ResourceDownloader:
     def _add_onnx_task(self, onnx_name: str):
         """Add an ONNX sidecar download task by filename."""
         s3_arch = map_arch_to_s3_path(self.hailo_arch)
-        url = f"{_resources_base_url()}/hefs/{s3_arch}/{onnx_name}"
+        url = f"{S3_RESOURCES_BASE_URL}/hefs/{s3_arch}/{onnx_name}"
         dest = self.resource_root / RESOURCES_MODELS_DIR_NAME / self.hailo_arch / onnx_name
         task = DownloadTask(
             url=url,
@@ -602,7 +597,7 @@ class ResourceDownloader:
             dest = self.resource_root / RESOURCES_VIDEOS_DIR_NAME / video_name
             
             if source == "s3":
-                url = video_url or f"{_resources_base_url()}/video/{video_name}"
+                url = video_url or f"{S3_RESOURCES_BASE_URL}/video/{video_name}"
             elif video_url:
                 url = video_url
             else:
@@ -640,7 +635,7 @@ class ResourceDownloader:
             dest = self.resource_root / "images" / image_name
             
             if source == "s3":
-                url = image_url or f"{_resources_base_url()}/images/{image_name}"
+                url = image_url or f"{S3_RESOURCES_BASE_URL}/images/{image_name}"
             elif image_url:
                 url = image_url
             else:
@@ -678,7 +673,7 @@ class ResourceDownloader:
             dest = self.resource_root / RESOURCES_JSON_DIR_NAME / json_name
             
             if source == "s3":
-                url = json_url or f"{_resources_base_url()}/configs/{json_name}"
+                url = json_url or f"{S3_RESOURCES_BASE_URL}/configs/{json_name}"
             elif json_url:
                 url = json_url
             else:
@@ -716,7 +711,7 @@ class ResourceDownloader:
             dest = self.resource_root / RESOURCES_NPY_DIR_NAME / npy_name
 
             if source == "s3":
-                url = npy_url or f"{_resources_base_url()}/npy/{npy_name}"
+                url = npy_url or f"{S3_RESOURCES_BASE_URL}/npy/{npy_name}"
             elif npy_url:
                 url = npy_url
             else:
@@ -754,7 +749,7 @@ class ResourceDownloader:
             dest = self.resource_root / RESOURCES_NPY_DIR_NAME / npy_name
 
             if source == "s3":
-                url = npy_url or f"{_resources_base_url()}/npy/{npy_name}"
+                url = npy_url or f"{S3_RESOURCES_BASE_URL}/npy/{npy_name}"
             elif npy_url:
                 url = npy_url
             else:

@@ -526,7 +526,6 @@ load_config() {
     # Extract resources settings
     RESOURCES_ROOT=$(yaml_get "resources.root" "${CONFIG_FILE}")
     RESOURCES_SYMLINK_NAME=$(yaml_get "resources.path" "${CONFIG_FILE}")
-    BASE_URL=$(yaml_get "resources.base_url" "${CONFIG_FILE}")
     DOWNLOAD_GROUP=$(yaml_get "resources.download_group" "${CONFIG_FILE}")
     ENV_FILE=$(yaml_get "resources.env_file" "${CONFIG_FILE}")
 
@@ -556,7 +555,6 @@ load_config() {
     log_debug "  USE_SYSTEM_SITE_PACKAGES=${USE_SYSTEM_SITE_PACKAGES}"
     log_debug "  RESOURCES_ROOT=${RESOURCES_ROOT}"
     log_debug "  RESOURCES_SYMLINK_NAME=${RESOURCES_SYMLINK_NAME}"
-    log_debug "  BASE_URL=${BASE_URL}"
     log_debug "  DOWNLOAD_GROUP=${DOWNLOAD_GROUP}"
     log_debug "  ENV_FILE=${ENV_FILE}"
     log_debug "  SYSTEM_PACKAGES=${SYSTEM_PACKAGES[*]}"
@@ -584,7 +582,7 @@ ${BOLD}OPTIONS:${NC}
     -ph, --pyhailort PATH       Path to custom PyHailoRT wheel file
     -pt, --pytappas PATH        Path to custom PyTappas wheel file
     --all                       Download all available models/resources
-    --base-url URL              Override resources BASE_URL for all download scripts
+    --base-url URL              Override Python wheel BASE_URL (e.g. http://dev-public.hailo.ai/2025_12)
     -x, --no-install            Skip Python package installation
     --no-system-python          Don't use system site-packages in venv
     --no-tappas-required        Skip TAPPAS checks, Python TAPPAS install, compile, and post_install
@@ -600,7 +598,7 @@ ${BOLD}EXAMPLES:${NC}
     sudo $SCRIPT_NAME                     # Standard installation
     sudo $SCRIPT_NAME --dry-run           # Preview what would be done
     sudo $SCRIPT_NAME --all               # Install with all models
-    sudo $SCRIPT_NAME --base-url https://my-mirror.example.com/resources
+    sudo $SCRIPT_NAME --base-url http://dev-public.hailo.ai/2025_12
     sudo $SCRIPT_NAME -x                  # Skip Python package installation
     sudo $SCRIPT_NAME -n my_venv --all    # Custom venv name + all models
 
@@ -934,10 +932,6 @@ setup_resources() {
     # Create new .env file at resources root
     run_as_user touch "${ENV_FILE}"
     run_as_user chmod 644 "${ENV_FILE}"
-    if [[ -n "${BASE_URL}" ]]; then
-        printf 'BASE_URL=%s\n' "${BASE_URL}" >> "${ENV_FILE}"
-        log_debug "Persisted BASE_URL to ${ENV_FILE}: ${BASE_URL}"
-    fi
     log_debug "Created .env file at ${ENV_FILE}"
 
     log_success "Resources directories created"
@@ -1098,6 +1092,10 @@ install_python_packages() {
                 flags="${flags} --hailort-version ${HAILORT_VERSION}"
                 log_debug "Installing HailoRT version: ${HAILORT_VERSION}"
             fi
+            if [[ -n "${BASE_URL}" ]]; then
+                flags="${flags} --base-url ${BASE_URL}"
+                log_debug "Using Python wheel BASE_URL override: ${BASE_URL}"
+            fi
             if [[ "${NO_TAPPAS_REQUIRED}" == true ]]; then
                 flags="${flags} --no-tappas"
             fi
@@ -1220,7 +1218,7 @@ run_post_install() {
         disable_error_trap
         local download_exit=0
         
-        run_as_user env BASE_URL='${BASE_URL}' bash -c "
+        run_as_user bash -c "
             export PYTHONUNBUFFERED=1 && \
             source '${venv_activate}' && \
             cd '${SCRIPT_DIR}' && \
@@ -1283,7 +1281,7 @@ run_post_install() {
     # Use unbuffered output to ensure real-time progress display
     # PYTHONUNBUFFERED=1 ensures Python outputs are unbuffered (most reliable for Python)
     # stdbuf -oL -eL ensures line-buffered output as fallback (flush on each line)
-    run_as_user env BASE_URL='${BASE_URL}' bash -c "
+    run_as_user bash -c "
         export PYTHONUNBUFFERED=1 && \
         source '${venv_activate}' && \
         cd '${SCRIPT_DIR}' && \
@@ -1531,7 +1529,9 @@ main() {
     log_info "  Virtual Environment: ${VENV_NAME}"
     log_info "  Download Group: ${DOWNLOAD_GROUP}"
     log_info "  Resources Root: ${RESOURCES_ROOT}"
-    log_info "  Base URL: ${BASE_URL}"
+    if [[ -n "${BASE_URL}" ]]; then
+        log_info "  Python Wheel BASE_URL Override: ${BASE_URL}"
+    fi
     log_info "  System Site-Packages: ${USE_SYSTEM_SITE_PACKAGES}"
     log_info "  Log File: ${LOG_FILE}"
 
