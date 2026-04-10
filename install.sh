@@ -330,7 +330,7 @@ validate_versions() {
 }
 
 # Get Model Zoo version for a given Hailo architecture
-# For H10: Derives from HailoRT version (5.1.1 -> v5.1.0, 5.2.0 -> v5.2.0)
+# For H10: Derives from HailoRT version (5.1.x -> v5.1.0, 5.2.x -> v5.2.0, 5.3.x -> v5.3.0)
 # For H8/H8L: Uses static mapping v2.17.0
 get_model_zoo_version() {
     local arch="$1"
@@ -343,11 +343,9 @@ get_model_zoo_version() {
             mz_version="v2.17.0"
             ;;
         hailo10h)
-            # H10: Derive from HailoRT version
-            # HailoRT 5.2.x -> Model Zoo v5.2.0
-            # HailoRT 5.1.x (default) -> Model Zoo v5.1.0
-            if [[ "$hailort_ver" == 5.2.* ]]; then
-                mz_version="v5.2.0"
+            # H10: Derive from HailoRT major.minor line (5.3.x -> v5.3.0, etc.)
+            if [[ "$hailort_ver" =~ ^([0-9]+)\.([0-9]+)\.[0-9]+$ ]]; then
+                mz_version="v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.0"
             else
                 mz_version="v5.1.0"
             fi
@@ -799,7 +797,11 @@ check_prerequisites() {
     fi
 
     if [[ -n "${REQUESTED_MODEL_ZOO_VERSION:-}" ]]; then
-        MODEL_ZOO_VER="${REQUESTED_MODEL_ZOO_VERSION}"
+        if [[ "${REQUESTED_MODEL_ZOO_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            MODEL_ZOO_VER="v${REQUESTED_MODEL_ZOO_VERSION}"
+        else
+            MODEL_ZOO_VER="${REQUESTED_MODEL_ZOO_VERSION}"
+        fi
     fi
 
     local target_driver_version="${REQUESTED_DRIVER_VERSION:-$driver_version}"

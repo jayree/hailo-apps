@@ -186,7 +186,7 @@ def map_arch_to_s3_path(hailo_arch: str) -> str:
 def get_model_zoo_version_for_arch(hailo_arch: str) -> tuple[str, str]:
     """Get Model Zoo version and download architecture for a given Hailo architecture.
     
-    For H10: Derives from HailoRT version (5.1.x -> v5.1.0, 5.2.x -> v5.2.0)
+    For H10: Derives from HailoRT major/minor (5.1.x -> v5.1.0, 5.2.x -> v5.2.0, 5.3.x -> v5.3.0)
     For H8/H8L: Uses static mapping v2.17.0
     """
     download_arch = hailo_arch
@@ -198,10 +198,11 @@ def get_model_zoo_version_for_arch(hailo_arch: str) -> tuple[str, str]:
         # Derive from HailoRT version for H10
         if hailo_arch == HAILO10H_ARCH:
             hailort_version = os.getenv(HAILORT_VERSION_KEY, "5.1.1")
-            if hailort_version.startswith("5.2"):
-                model_zoo_version = "v5.2.0"
+            parts = hailort_version.split(".")
+            if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
+                model_zoo_version = f"v{parts[0]}.{parts[1]}.0"
             else:
-                model_zoo_version = "v5.1.0"  # Default for 5.1.x
+                model_zoo_version = "v5.1.0"
         else:
             # H8/H8L always uses v2.17.0
             model_zoo_version = "v2.17.0"
