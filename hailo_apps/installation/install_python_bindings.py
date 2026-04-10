@@ -70,6 +70,7 @@ Examples:
     hailo-install-python-bindings hailo10h      # Install for Hailo-10H
     hailo-install-python-bindings hailo8 --download-only  # Download only
     hailo-install-python-bindings hailo10h --hailort-version 5.2.0
+    hailo-install-python-bindings hailo10h --base-url http://dev-public.hailo.ai/2025_12
     
 Note:
     This requires the hailo_installer_python.sh script which is part of
@@ -98,6 +99,10 @@ Note:
     parser.add_argument(
         "--download-dir", "-D",
         help="Directory to download wheels to (default: /usr/local/hailo/resources/packages)"
+    )
+    parser.add_argument(
+        "--base-url", "-b",
+        help="Override wheel base URL (e.g. http://dev-public.hailo.ai/2025_12)"
     )
     parser.add_argument(
         "--no-hailort", "-H",
@@ -136,6 +141,8 @@ Note:
         cmd.append("--download-only")
     if args.download_dir:
         cmd.extend(["--download-dir", args.download_dir])
+    if args.base_url:
+        cmd.extend(["--base-url", args.base_url])
     if args.no_hailort:
         cmd.append("--no-hailort")
     if args.no_tappas:

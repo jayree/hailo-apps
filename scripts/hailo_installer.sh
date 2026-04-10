@@ -56,6 +56,7 @@ ARCH (mandatory positional argument):
 Options:
   -r, --hailort-version VER      Override HailoRT version
   -t, --tappas-core-version VER  Override TAPPAS Core version
+  -b, --base-url URL             Override base URL (default: auto-detected from ARCH)
   -n, --venv-name NAME            Virtualenv name (install mode only) [default: $VENV_NAME]
   -H, --no-hailort                Skip HailoRT download/install
   -o, --download-only             Only download packages, do NOT install
@@ -129,6 +130,14 @@ while [[ "$#" -gt 0 ]]; do
             VENV_NAME="$2"
             shift 2
             ;;
+        -b|--base-url)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: --base-url requires a value"
+                exit 1
+            fi
+            BASE_URL="$2"
+            shift 2
+            ;;
         -H|--no-hailort)
             NO_HAILORT="true"
             shift
@@ -179,11 +188,13 @@ if [[ -z "$TAPPAS_CORE_VERSION" ]]; then
     exit 1
 fi
 
-# Set BASE_URL based on hardware architecture
-if [[ "$HW_ARCHITECTURE" == "hailo8" ]]; then
-    BASE_URL="http://dev-public.hailo.ai/2025_10"
-elif [[ "$HW_ARCHITECTURE" == "hailo10h" ]]; then
-    BASE_URL="http://dev-public.hailo.ai/2025_12"
+# Set BASE_URL based on hardware architecture (unless overridden by --base-url)
+if [[ -z "$BASE_URL" ]]; then
+  if [[ "$HW_ARCHITECTURE" == "hailo8" ]]; then
+      BASE_URL="http://dev-public.hailo.ai/2025_10"
+  elif [[ "$HW_ARCHITECTURE" == "hailo10h" ]]; then
+      BASE_URL="http://dev-public.hailo.ai/2025_12"
+  fi
 fi
 
 TARGET_DIR="${OUTPUT_DIR_BASE}/${HW_ARCHITECTURE}"
