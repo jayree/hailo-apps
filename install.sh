@@ -589,6 +589,7 @@ ${BOLD}OPTIONS:${NC}
     --hailort-version VER       Target HailoRT version for upgrade/install
     --tappas-version VER        Target TAPPAS Core version for upgrade/install
     --model-zoo-version VER     Override Model Zoo version used for resource downloads
+                                (on hailo10h also used for gen-ai model-zoo deb install)
     --base-url URL              Package server base URL for installer scripts
     --dry-run                   Show what would be done without executing
     -h, --help                  Show this help message
@@ -828,6 +829,10 @@ check_prerequisites() {
             update_flags="${update_flags} --tappas-core-version ${REQUESTED_TAPPAS_VERSION}"
         fi
         [[ -n "${BASE_URL_OVERRIDE:-}" ]] && update_flags="${update_flags} --base-url ${BASE_URL_OVERRIDE}"
+        if [[ -n "${REQUESTED_MODEL_ZOO_VERSION:-}" && "${arch_arg}" == "hailo10h" ]]; then
+            local gen_ai_model_zoo_pkg_ver="${REQUESTED_MODEL_ZOO_VERSION#v}"
+            update_flags="${update_flags} --gen-ai-model-zoo-version ${gen_ai_model_zoo_pkg_ver}"
+        fi
 
         local installer_script="${SCRIPT_DIR}/scripts/hailo_installer.sh"
         if [[ ! -f "${installer_script}" ]]; then

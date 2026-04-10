@@ -38,6 +38,7 @@ DRIVER_VERSION_H10="$HAILORT_VERSION_H10"
 HAILORT_VERSION=""
 TAPPAS_CORE_VERSION=""
 DRIVER_VERSION=""
+GEN_AI_MODEL_ZOO_VERSION=""
 
 
 # Defaults (can be overridden by flags)
@@ -61,6 +62,7 @@ Options:
   -r, --hailort-version VER      Override HailoRT version
   -d, --driver-version VER       Override driver version (default: same as HailoRT)
   -t, --tappas-core-version VER  Override TAPPAS Core version
+  -m, --gen-ai-model-zoo-version VER  Install hailo_gen_ai_model_zoo deb (ARM64 only)
   -b, --base-url URL             Override base URL (example: http://dev-public.hailo.ai/2025_12)
   -n, --venv-name NAME            Virtualenv name (install mode only) [default: $VENV_NAME]
   -H, --no-hailort                Skip HailoRT download/install
@@ -135,6 +137,14 @@ while [[ "$#" -gt 0 ]]; do
                 exit 1
             fi
             TAPPAS_CORE_VERSION="$2"
+            shift 2
+            ;;
+        -m|--gen-ai-model-zoo-version)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: --gen-ai-model-zoo-version requires a value"
+                exit 1
+            fi
+            GEN_AI_MODEL_ZOO_VERSION="$2"
             shift 2
             ;;
         -b|--base-url)
@@ -369,9 +379,13 @@ common_files=(
 )
 
 ARCH_FILES=()
+GEN_AI_FILE=""
 case "$ARCH" in
   x86_64|amd64)
     echo "Configuring AMD64 package names..."
+    if [[ -n "$GEN_AI_MODEL_ZOO_VERSION" ]]; then
+      echo "Warning: --gen-ai-model-zoo-version is ARM64-only. Skipping on AMD64."
+    fi
     if [[ "$NO_HAILORT" != "true" ]]; then
       ARCH_FILES+=("hailort_${HAILORT_VERSION}_amd64.deb")
     fi
@@ -398,6 +412,10 @@ case "$ARCH" in
       ARCH_FILES+=("hailort_${HAILORT_VERSION}_arm64.deb")
     fi
     ARCH_FILES+=("hailo-tappas-core_${TAPPAS_CORE_VERSION}_arm64.deb")
+    if [[ -n "$GEN_AI_MODEL_ZOO_VERSION" ]]; then
+      GEN_AI_FILE="hailo_gen_ai_model_zoo_${GEN_AI_MODEL_ZOO_VERSION}_arm64.deb"
+      ARCH_FILES+=("${GEN_AI_FILE}")
+    fi
     ;;
   rpi)
     echo "Configuring rpi  package names..."
@@ -409,6 +427,10 @@ case "$ARCH" in
       ARCH_FILES+=("hailo-tappas-core-5.0.0v_5.0.0_arm64.deb")
     else
       ARCH_FILES+=("hailo-tappas-core_${TAPPAS_CORE_VERSION}_arm64.deb")
+    fi
+    if [[ -n "$GEN_AI_MODEL_ZOO_VERSION" ]]; then
+      GEN_AI_FILE="hailo_gen_ai_model_zoo_${GEN_AI_MODEL_ZOO_VERSION}_arm64.deb"
+      ARCH_FILES+=("${GEN_AI_FILE}")
     fi
     ;;
   *)
@@ -463,5 +485,8 @@ fi
 # Tappas Core is at index 0 if HailoRT is skipped, otherwise at index 1
 TAPPAS_INDEX=$([[ "$NO_HAILORT" == "true" ]] && echo "0" || echo "1")
 install_file "${ARCH_FILES[$TAPPAS_INDEX]}"  # Tappas Core deb
+if [[ -n "${GEN_AI_FILE}" ]]; then
+  install_file "${GEN_AI_FILE}"              # Gen-AI Model Zoo deb
+fi
 
 echo "Installation complete."
