@@ -15,6 +15,7 @@ Environment Variables Set:
     - VIRTUAL_ENV_NAME: Name of the virtual environment
     - HAILO_APPS_PATH: Full path to the hailo-apps repository
     - HAILO_LOG_LEVEL: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    - BASE_URL: Base URL used by resource download scripts
 """
 
 import argparse
@@ -46,6 +47,8 @@ try:
     from hailo_apps.python.core.common.defines import (
         DEFAULT_DOTENV_PATH,
         DEFAULT_RESOURCES_SYMLINK_PATH,
+        DEFAULT_S3_RESOURCES_BASE_URL,
+        BASE_URL_ENV_KEY,
         HAILO10H_ARCH,
         HAILO_ARCH_DEFAULT,
         HAILO_ARCH_KEY,
@@ -88,6 +91,8 @@ except ImportError:
         spec.loader.exec_module(defines_module)
         DEFAULT_DOTENV_PATH = defines_module.DEFAULT_DOTENV_PATH
         DEFAULT_RESOURCES_SYMLINK_PATH = defines_module.DEFAULT_RESOURCES_SYMLINK_PATH
+        DEFAULT_S3_RESOURCES_BASE_URL = defines_module.DEFAULT_S3_RESOURCES_BASE_URL
+        BASE_URL_ENV_KEY = defines_module.BASE_URL_ENV_KEY
         HAILO10H_ARCH = defines_module.HAILO10H_ARCH
         HAILO_ARCH_DEFAULT = defines_module.HAILO_ARCH_DEFAULT
         HAILO_ARCH_KEY = defines_module.HAILO_ARCH_KEY
@@ -243,6 +248,9 @@ def configure_environment(config: Dict, env_path: Path) -> None:
     
     # Get log level from config (default: INFO)
     log_level = config.get('log_level', 'INFO').upper()
+    base_url = os.getenv(BASE_URL_ENV_KEY, "").strip() or resources_config.get(
+        "base_url", DEFAULT_S3_RESOURCES_BASE_URL
+    )
     
     # Build environment variables dict
     env_vars = {
@@ -257,6 +265,7 @@ def configure_environment(config: Dict, env_path: Path) -> None:
         VIRTUAL_ENV_NAME_KEY: venv_config.get('name', VIRTUAL_ENV_NAME_DEFAULT),
         HAILO_APPS_PATH_KEY: repo_root,
         HAILO_LOG_LEVEL_KEY: log_level,
+        BASE_URL_ENV_KEY: base_url.rstrip("/"),
     }
     
     # Update os.environ
@@ -306,6 +315,7 @@ Environment Variables Set:
   HAILO_APPS_PATH Full path to the repository
   VIRTUAL_ENV_NAME      Name of the virtual environment
   HAILO_LOG_LEVEL       Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  BASE_URL              Base URL used by resource download scripts
 """
     )
     parser.add_argument(

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Tuple, Dict
 
@@ -17,7 +18,9 @@ HAILORT_PACKAGE_NAME = "hailort"
 HAILORT_PACKAGE_NAME_RPI = "h10-hailort"
 HAILO_FILE_EXTENSION = ".hef"
 MODEL_ZOO_URL = "https://hailo-model-zoo.s3.eu-west-2.amazonaws.com/ModelZoo/Compiled"
-S3_RESOURCES_BASE_URL = "https://hailo-csdata.s3.eu-west-2.amazonaws.com/resources"
+DEFAULT_S3_RESOURCES_BASE_URL = "https://hailo-csdata.s3.eu-west-2.amazonaws.com/resources"
+BASE_URL_ENV_KEY = "BASE_URL"
+S3_RESOURCES_BASE_URL = os.getenv(BASE_URL_ENV_KEY, DEFAULT_S3_RESOURCES_BASE_URL).rstrip("/")
 RESOURCES_ROOT_PATH_DEFAULT = "/usr/local/hailo/resources"  # Do Not Change!
 SHARED_VDEVICE_GROUP_ID = "SHARED"  # Do Not Change!
 

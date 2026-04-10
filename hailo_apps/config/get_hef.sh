@@ -269,12 +269,15 @@ download_hef() {
     # Both Model Zoo and CS follow similar folder structures.
     # modelzoo  → s3://hailo-model-zoo/ModelZoo/Compiled/<mz>/<arch>/<network>.hef
     # cs        → s3://hailo-csdata/resources/hefs/<mz>/<arch>/<network>.hef
+    local cs_base_url="${BASE_URL:-https://hailo-csdata.s3.eu-west-2.amazonaws.com/resources}"
+    cs_base_url="${cs_base_url%/}"
+
     case "${source,,}" in
     modelzoo|model_zoo)
         url="https://hailo-model-zoo.s3.eu-west-2.amazonaws.com/ModelZoo/Compiled/${mz_version}/${hw_arch}/${network}.hef"
         ;;
     cs)
-        url="https://hailo-csdata.s3.eu-west-2.amazonaws.com/resources/hefs/${mz_version}/${hw_arch}/${network}.hef"
+        url="${cs_base_url}/hefs/${mz_version}/${hw_arch}/${network}.hef"
         ;;
     *)
         err "Unknown source '$source' (expected: modelzoo | cs)"; exit 1;;
@@ -297,7 +300,7 @@ download_hef() {
             fi
             # Retry only if the fallback differs from the original
             if [[ "$fallback_mz" != "$mz_version" ]]; then
-                local fallback_url="https://hailo-csdata.s3.eu-west-2.amazonaws.com/resources/hefs/${fallback_mz}/${hw_arch}/${network}.hef"
+                local fallback_url="${cs_base_url}/hefs/${fallback_mz}/${hw_arch}/${network}.hef"
                 info "Primary CS path not found; retrying with default mz_version '${fallback_mz}' ..."
                 if curl -sfI "$fallback_url" >/dev/null; then
                     url="$fallback_url"

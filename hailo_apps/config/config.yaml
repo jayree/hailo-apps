@@ -78,6 +78,8 @@ venv:
 # Resources
 #-------------------------------------------------------------------------------
 resources:
+  # Base URL for resource downloads (can be overridden via install.sh --base-url)
+  base_url: "https://hailo-csdata.s3.eu-west-2.amazonaws.com/resources"
   # Path to resources symlink (relative to repo root)
   path: "resources"
   # Absolute path to resources root (where files are actually stored)
