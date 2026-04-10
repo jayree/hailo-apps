@@ -702,13 +702,6 @@ parse_arguments() {
         [[ -z "${REQUESTED_DRIVER_VERSION:-}" ]] && REQUESTED_DRIVER_VERSION="${REQUESTED_STACK_VERSION}"
         [[ -z "${REQUESTED_HAILORT_VERSION:-}" ]] && REQUESTED_HAILORT_VERSION="${REQUESTED_STACK_VERSION}"
         [[ -z "${REQUESTED_TAPPAS_VERSION:-}" ]] && REQUESTED_TAPPAS_VERSION="${REQUESTED_STACK_VERSION}"
-        if [[ -z "${REQUESTED_MODEL_ZOO_VERSION:-}" ]]; then
-            if [[ "${REQUESTED_STACK_VERSION}" =~ ^([0-9]+)\.([0-9]+)\.[0-9]+$ ]]; then
-                REQUESTED_MODEL_ZOO_VERSION="v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.0"
-            else
-                REQUESTED_MODEL_ZOO_VERSION="${REQUESTED_STACK_VERSION}"
-            fi
-        fi
     fi
 }
 
@@ -812,9 +805,16 @@ check_prerequisites() {
         esac
     done
 
-    # Determine Model Zoo version based on architecture
+    local target_driver_version="${REQUESTED_DRIVER_VERSION:-$driver_version}"
+    local target_hailort_version="${REQUESTED_HAILORT_VERSION:-$hailort_version}"
+    local target_tappas_version="${REQUESTED_TAPPAS_VERSION:-$tappas_version}"
+
+    # Determine Model Zoo version based on architecture and target HailoRT line
     if [[ -n "${HAILO_ARCH:-}" && "${HAILO_ARCH}" != "unknown" ]]; then
+        local previous_hailort_version="${HAILORT_VERSION:-}"
+        HAILORT_VERSION="${target_hailort_version}"
         MODEL_ZOO_VER=$(get_model_zoo_version "${HAILO_ARCH}")
+        HAILORT_VERSION="${previous_hailort_version}"
     fi
 
     if [[ -n "${REQUESTED_MODEL_ZOO_VERSION:-}" ]]; then
@@ -824,10 +824,6 @@ check_prerequisites() {
             MODEL_ZOO_VER="${REQUESTED_MODEL_ZOO_VERSION}"
         fi
     fi
-
-    local target_driver_version="${REQUESTED_DRIVER_VERSION:-$driver_version}"
-    local target_hailort_version="${REQUESTED_HAILORT_VERSION:-$hailort_version}"
-    local target_tappas_version="${REQUESTED_TAPPAS_VERSION:-$tappas_version}"
 
     # Optional in-place upgrade/update of existing system packages
     if [[ -n "${REQUESTED_DRIVER_VERSION}${REQUESTED_HAILORT_VERSION}${REQUESTED_TAPPAS_VERSION}${BASE_URL_OVERRIDE}" ]]; then
