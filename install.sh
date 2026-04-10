@@ -57,6 +57,8 @@ NO_SYSTEM_PYTHON=false
 NO_TAPPAS_REQUIRED=false
 PYHAILORT_PATH=""
 PYTAPPAS_PATH=""
+BASE_URL=""
+VERSION_OVERRIDE=""
 
 # Configuration variables (populated from config.yaml)
 VENV_NAME=""
@@ -325,7 +327,7 @@ validate_versions() {
 }
 
 # Get Model Zoo version for a given Hailo architecture
-# For H10: Derives from HailoRT version (5.1.1 -> v5.1.0, 5.2.0 -> v5.2.0)
+# For H10: Derives from HailoRT version (5.1.x -> v5.1.0, 5.2.x -> v5.2.0, 5.3.x -> v5.3.0)
 # For H8/H8L: Uses static mapping v2.17.0
 get_model_zoo_version() {
     local arch="$1"
@@ -339,9 +341,12 @@ get_model_zoo_version() {
             ;;
         hailo10h)
             # H10: Derive from HailoRT version
+            # HailoRT 5.3.x -> Model Zoo v5.3.0
             # HailoRT 5.2.x -> Model Zoo v5.2.0
             # HailoRT 5.1.x (default) -> Model Zoo v5.1.0
-            if [[ "$hailort_ver" == 5.2.* ]]; then
+            if [[ "$hailort_ver" == 5.3.* ]]; then
+                mz_version="v5.3.0"
+            elif [[ "$hailort_ver" == 5.2.* ]]; then
                 mz_version="v5.2.0"
             else
                 mz_version="v5.1.0"
@@ -578,6 +583,10 @@ ${BOLD}OPTIONS:${NC}
     -ph, --pyhailort PATH       Path to custom PyHailoRT wheel file
     -pt, --pytappas PATH        Path to custom PyTappas wheel file
     --all                       Download all available models/resources
+    --base-url URL              Override BASE_URL for downstream installer scripts
+                                (e.g. http://dev-public.hailo.ai/2025_12)
+    --version VER               Override package version for downstream installer scripts
+                                (currently forwarded as --tappas-core-version VER)
     -x, --no-install            Skip Python package installation
     --no-system-python          Don't use system site-packages in venv
     --no-tappas-required        Skip TAPPAS checks, Python TAPPAS install, compile, and post_install
@@ -593,6 +602,8 @@ ${BOLD}EXAMPLES:${NC}
     sudo $SCRIPT_NAME                     # Standard installation
     sudo $SCRIPT_NAME --dry-run           # Preview what would be done
     sudo $SCRIPT_NAME --all               # Install with all models
+    sudo $SCRIPT_NAME --base-url http://dev-public.hailo.ai/2025_12
+    sudo $SCRIPT_NAME --version 5.3.0
     sudo $SCRIPT_NAME -x                  # Skip Python package installation
     sudo $SCRIPT_NAME -n my_venv --all    # Custom venv name + all models
 
@@ -632,6 +643,22 @@ parse_arguments() {
             --all)
                 DOWNLOAD_GROUP="all"
                 shift
+                ;;
+            --base-url)
+                if [[ -z "${2:-}" ]]; then
+                    log_error "--base-url requires a URL value"
+                    exit 1
+                fi
+                BASE_URL="$2"
+                shift 2
+                ;;
+            --version)
+                if [[ -z "${2:-}" ]]; then
+                    log_error "--version requires a version value"
+                    exit 1
+                fi
+                VERSION_OVERRIDE="$2"
+                shift 2
                 ;;
             -x|--no-install)
                 NO_INSTALL=true
@@ -1000,7 +1027,39 @@ install_python_packages() {
     local venv_path="${SCRIPT_DIR}/${VENV_NAME}"
     local venv_activate="${venv_path}/bin/activate"
 
+    # Always run system package installer script (downloads/installs .deb packages)
+    local system_installer="${SCRIPT_DIR}/scripts/hailo_installer.sh"
+    local arch_arg=""
+    local -a installer_flags=()
+
+    if [[ -z "${HAILO_ARCH:-}" || "${HAILO_ARCH}" == "unknown" ]]; then
+        log_error "HAILO_ARCH is required for system package installation (hailo8/hailo8l/hailo10h)."
+        record_step_result "FAILED" "Missing HAILO_ARCH for system install"
+        return 1
+    fi
+
+    case "${HAILO_ARCH}" in
+        hailo8|hailo8l) arch_arg="hailo8" ;;
+        hailo10h) arch_arg="hailo10h" ;;
+        *)
+            log_error "Unsupported HAILO_ARCH value for system installation: ${HAILO_ARCH}"
+            record_step_result "FAILED" "Unsupported HAILO_ARCH for system install"
+            return 1
+            ;;
+    esac
+
+    if [[ -n "${HAILORT_VERSION:-}" && "${HAILORT_VERSION}" != "-1" ]]; then
+        installer_flags+=("--hailort-version" "${HAILORT_VERSION}")
+    fi
+    if [[ -n "${BASE_URL}" ]]; then
+        installer_flags+=("--base-url" "${BASE_URL}")
+    fi
+    if [[ -n "${VERSION_OVERRIDE}" ]]; then
+        installer_flags+=("--tappas-core-version" "${VERSION_OVERRIDE}")
+    fi
+
     if [[ "${DRY_RUN}" == true ]]; then
+        log_dry_run "${system_installer} ${arch_arg} ${installer_flags[*]} --dry-run"
         log_dry_run "source ${venv_activate}"
         log_dry_run "pip install --upgrade pip setuptools wheel"
         [[ -n "$PYHAILORT_PATH" ]] && log_dry_run "pip install '${PYHAILORT_PATH}'"
@@ -1010,6 +1069,19 @@ install_python_packages() {
         log_dry_run "pip install -e ."
         record_step_result "SKIPPED" "Dry-run mode"
         return 0
+    fi
+
+    if [[ ! -f "$system_installer" ]]; then
+        log_error "System installer script not found: ${system_installer}"
+        record_step_result "FAILED" "hailo_installer.sh missing"
+        return 1
+    fi
+
+    log_info "Running system package installer script..."
+    if ! "${system_installer}" "${arch_arg}" "${installer_flags[@]}"; then
+        log_error "System package installer failed"
+        record_step_result "FAILED" "system package installation failed"
+        return 1
     fi
 
     # Install custom wheel files if provided
@@ -1077,6 +1149,14 @@ install_python_packages() {
             if [[ "${INSTALL_HAILORT}" == true && -n "${HAILORT_VERSION}" && "${HAILORT_VERSION}" != "-1" ]]; then
                 flags="${flags} --hailort-version ${HAILORT_VERSION}"
                 log_debug "Installing HailoRT version: ${HAILORT_VERSION}"
+            fi
+            if [[ -n "${BASE_URL}" ]]; then
+                flags="${flags} --base-url ${BASE_URL}"
+                log_debug "Using BASE_URL override: ${BASE_URL}"
+            fi
+            if [[ -n "${VERSION_OVERRIDE}" ]]; then
+                flags="${flags} --tappas-core-version ${VERSION_OVERRIDE}"
+                log_debug "Using TAPPAS core version override: ${VERSION_OVERRIDE}"
             fi
             if [[ "${NO_TAPPAS_REQUIRED}" == true ]]; then
                 flags="${flags} --no-tappas"
@@ -1511,6 +1591,12 @@ main() {
     log_info "  Virtual Environment: ${VENV_NAME}"
     log_info "  Download Group: ${DOWNLOAD_GROUP}"
     log_info "  Resources Root: ${RESOURCES_ROOT}"
+    if [[ -n "${BASE_URL}" ]]; then
+        log_info "  BASE_URL Override: ${BASE_URL}"
+    fi
+    if [[ -n "${VERSION_OVERRIDE}" ]]; then
+        log_info "  Version Override (--version): ${VERSION_OVERRIDE}"
+    fi
     log_info "  System Site-Packages: ${USE_SYSTEM_SITE_PACKAGES}"
     log_info "  Log File: ${LOG_FILE}"
 

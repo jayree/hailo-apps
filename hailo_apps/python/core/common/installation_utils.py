@@ -29,7 +29,6 @@ from .defines import (
     HAILO_TAPPAS_CORE,
     HAILO_TAPPAS_CORE_PYTHON_NAMES,
     HAILORT_PACKAGE_NAME,
-    HAILORT_PACKAGE_NAME_RPI,
     LINUX_SYSTEM_NAME_I,
     PIP_CMD,
     RPI_NAME_I,
@@ -216,17 +215,12 @@ def detect_pkg_installed(pkg_name: str) -> bool:
 
 
 def get_hailort_package_name() -> str:
-    """Get the appropriate HailoRT package name based on host architecture.
+    """Get the HailoRT system package name.
 
     Returns:
-        str: Package name ('hailort' or 'h10-hailort' for RPI)
+        str: Package name ('hailort')
     """
-    host_arch = detect_host_arch()
-    if host_arch == RPI_NAME_I:
-        if detect_hailo_arch() == HAILO10H_ARCH:
-            hailo_logger.debug(f"Using RPI-specific HailoRT package: {HAILORT_PACKAGE_NAME_RPI}")
-            return HAILORT_PACKAGE_NAME_RPI
-    hailo_logger.debug(f"Using default HailoRT package: {HAILORT_PACKAGE_NAME}")
+    hailo_logger.debug(f"Using HailoRT package: {HAILORT_PACKAGE_NAME}")
     return HAILORT_PACKAGE_NAME
 
 

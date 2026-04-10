@@ -188,7 +188,7 @@ class TestPythonEnvironment:
         else:
             pytest.fail(
                 "HailoRT Python bindings not found. "
-                "Install hailort or h10-hailort package."
+                "Install hailort package."
             )
     
     def test_tappas_python_bindings(self):
