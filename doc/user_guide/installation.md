@@ -374,8 +374,10 @@ The script downloads and installs all 5 packages:
 
 | Option | Description |
 |--------|-------------|
+| `--driver-version VER` | Override Hailo PCI driver version |
 | `--hailort-version VER` | Override HailoRT version |
 | `--tappas-core-version VER` | Override TAPPAS Core version |
+| `--base-url URL` | Override package server base URL |
 | `--download-only` | Download packages without installing |
 | `--output-dir DIR` | Change download location (default: `/usr/local/hailo/resources/packages`) |
 

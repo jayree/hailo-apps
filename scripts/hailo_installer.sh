@@ -22,6 +22,7 @@ set -euo pipefail
 
 # Base URL of the deb server (will be set based on hardware architecture)
 BASE_URL=""
+BASE_URL_OVERRIDE=""
 declare -a DOWNLOADED_URLS=()
 
 
@@ -31,9 +32,12 @@ HAILORT_VERSION_H8="4.23.0"
 TAPPAS_CORE_VERSION_H8="5.1.0"
 HAILORT_VERSION_H10="5.1.1"
 TAPPAS_CORE_VERSION_H10="5.1.0"
+DRIVER_VERSION_H8="$HAILORT_VERSION_H8"
+DRIVER_VERSION_H10="$HAILORT_VERSION_H10"
 
 HAILORT_VERSION=""
 TAPPAS_CORE_VERSION=""
+DRIVER_VERSION=""
 
 
 # Defaults (can be overridden by flags)
@@ -55,7 +59,9 @@ ARCH (mandatory positional argument):
 
 Options:
   -r, --hailort-version VER      Override HailoRT version
+  -d, --driver-version VER       Override driver version (default: same as HailoRT)
   -t, --tappas-core-version VER  Override TAPPAS Core version
+  -b, --base-url URL             Override base URL (example: http://dev-public.hailo.ai/2025_12)
   -n, --venv-name NAME            Virtualenv name (install mode only) [default: $VENV_NAME]
   -H, --no-hailort                Skip HailoRT download/install
   -o, --download-only             Only download packages, do NOT install
@@ -97,9 +103,11 @@ shift
 if [[ "$HW_ARCHITECTURE" == "hailo8" ]]; then
     HAILORT_VERSION="$HAILORT_VERSION_H8"
     TAPPAS_CORE_VERSION="$TAPPAS_CORE_VERSION_H8"
+    DRIVER_VERSION="$DRIVER_VERSION_H8"
 elif [[ "$HW_ARCHITECTURE" == "hailo10h" ]]; then
     HAILORT_VERSION="$HAILORT_VERSION_H10"
     TAPPAS_CORE_VERSION="$TAPPAS_CORE_VERSION_H10"
+    DRIVER_VERSION="$DRIVER_VERSION_H10"
 fi
 
 # Parse remaining flags (now using --flag value format)
@@ -113,12 +121,28 @@ while [[ "$#" -gt 0 ]]; do
             HAILORT_VERSION="$2"
             shift 2
             ;;
+        -d|--driver-version)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: --driver-version requires a value"
+                exit 1
+            fi
+            DRIVER_VERSION="$2"
+            shift 2
+            ;;
         -t|--tappas-core-version)
             if [[ $# -lt 2 ]]; then
                 echo "Error: --tappas-core-version requires a value"
                 exit 1
             fi
             TAPPAS_CORE_VERSION="$2"
+            shift 2
+            ;;
+        -b|--base-url)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: --base-url requires a value"
+                exit 1
+            fi
+            BASE_URL_OVERRIDE="$2"
             shift 2
             ;;
         -n|--venv-name)
@@ -174,16 +198,24 @@ if [[ -z "$HAILORT_VERSION" ]]; then
     echo "Error: HailoRT version is not set. Either specify ARCH or --hailort-version"
     exit 1
 fi
+if [[ -z "$DRIVER_VERSION" ]]; then
+    echo "Error: Driver version is not set. Either specify ARCH or --driver-version"
+    exit 1
+fi
 if [[ -z "$TAPPAS_CORE_VERSION" ]]; then
     echo "Error: TAPPAS Core version is not set. Either specify ARCH or --tappas-core-version"
     exit 1
 fi
 
-# Set BASE_URL based on hardware architecture
-if [[ "$HW_ARCHITECTURE" == "hailo8" ]]; then
-    BASE_URL="http://dev-public.hailo.ai/2025_10"
-elif [[ "$HW_ARCHITECTURE" == "hailo10h" ]]; then
-    BASE_URL="http://dev-public.hailo.ai/2025_12"
+if [[ -n "$BASE_URL_OVERRIDE" ]]; then
+  BASE_URL="$BASE_URL_OVERRIDE"
+else
+  # Set BASE_URL based on hardware architecture
+  if [[ "$HW_ARCHITECTURE" == "hailo8" ]]; then
+      BASE_URL="http://dev-public.hailo.ai/2025_10"
+  elif [[ "$HW_ARCHITECTURE" == "hailo10h" ]]; then
+      BASE_URL="http://dev-public.hailo.ai/2025_12"
+  fi
 fi
 
 TARGET_DIR="${OUTPUT_DIR_BASE}/${HW_ARCHITECTURE}"
@@ -198,7 +230,12 @@ if [[ "$HW_ARCHITECTURE" == "hailo8" ]]; then
 else
   HW_NAME="Hailo10"
 fi
-BASE_URL="${BASE_URL}/${HW_NAME}"
+if [[ "$BASE_URL" == */"${HW_NAME}" ]]; then
+  BASE_URL="${BASE_URL%/}"
+else
+  BASE_URL="${BASE_URL%/}/${HW_NAME}"
+fi
+echo "Using package base URL: ${BASE_URL}"
 
 # --- Functions ---
 download_file() {
@@ -232,7 +269,7 @@ install_file() {
 
   echo "Installing $file..."
   if [[ "$file" == *.deb ]]; then
-    sudo apt install -y "$path"
+    sudo apt-get install -y --allow-downgrades --allow-change-held-packages "$path"
   else
     echo "Unknown file type: $file"
   fi
@@ -328,7 +365,7 @@ fi
 
 # -------- Build file lists --------
 common_files=(
-  "hailort-pcie-driver_${HAILORT_VERSION}_all.deb"
+  "hailort-pcie-driver_${DRIVER_VERSION}_all.deb"
 )
 
 ARCH_FILES=()

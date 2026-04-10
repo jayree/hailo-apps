@@ -57,6 +57,11 @@ NO_SYSTEM_PYTHON=false
 NO_TAPPAS_REQUIRED=false
 PYHAILORT_PATH=""
 PYTAPPAS_PATH=""
+BASE_URL_OVERRIDE=""
+REQUESTED_DRIVER_VERSION=""
+REQUESTED_HAILORT_VERSION=""
+REQUESTED_TAPPAS_VERSION=""
+REQUESTED_MODEL_ZOO_VERSION=""
 
 # Configuration variables (populated from config.yaml)
 VENV_NAME=""
@@ -582,6 +587,11 @@ ${BOLD}OPTIONS:${NC}
     --no-system-python          Don't use system site-packages in venv
     --no-tappas-required        Skip TAPPAS checks, Python TAPPAS install, compile, and post_install
                                 (downloads resources directly, no C++ compilation)
+    --driver-version VER        Target Hailo PCI driver version for upgrade/install
+    --hailort-version VER       Target HailoRT version for upgrade/install
+    --tappas-version VER        Target TAPPAS Core version for upgrade/install
+    --model-zoo-version VER     Override Model Zoo version used for resource downloads
+    --base-url URL              Package server base URL for installer scripts
     --dry-run                   Show what would be done without executing
     -h, --help                  Show this help message
 
@@ -645,6 +655,26 @@ parse_arguments() {
             --no-tappas-required)
                 NO_TAPPAS_REQUIRED=true
                 shift
+                ;;
+            --driver-version)
+                REQUESTED_DRIVER_VERSION="$2"
+                shift 2
+                ;;
+            --hailort-version)
+                REQUESTED_HAILORT_VERSION="$2"
+                shift 2
+                ;;
+            --tappas-version)
+                REQUESTED_TAPPAS_VERSION="$2"
+                shift 2
+                ;;
+            --model-zoo-version)
+                REQUESTED_MODEL_ZOO_VERSION="$2"
+                shift 2
+                ;;
+            --base-url)
+                BASE_URL_OVERRIDE="$2"
+                shift 2
                 ;;
             --dry-run)
                 DRY_RUN=true
@@ -767,6 +797,59 @@ check_prerequisites() {
     if [[ -n "${HAILO_ARCH:-}" && "${HAILO_ARCH}" != "unknown" ]]; then
         MODEL_ZOO_VER=$(get_model_zoo_version "${HAILO_ARCH}")
     fi
+
+    if [[ -n "${REQUESTED_MODEL_ZOO_VERSION:-}" ]]; then
+        MODEL_ZOO_VER="${REQUESTED_MODEL_ZOO_VERSION}"
+    fi
+
+    local target_driver_version="${REQUESTED_DRIVER_VERSION:-$driver_version}"
+    local target_hailort_version="${REQUESTED_HAILORT_VERSION:-$hailort_version}"
+    local target_tappas_version="${REQUESTED_TAPPAS_VERSION:-$tappas_version}"
+
+    # Optional in-place upgrade/update of existing system packages
+    if [[ -n "${REQUESTED_DRIVER_VERSION}${REQUESTED_HAILORT_VERSION}${REQUESTED_TAPPAS_VERSION}${BASE_URL_OVERRIDE}" ]]; then
+        local arch_arg=""
+        case "${HAILO_ARCH:-}" in
+            hailo8|hailo8l) arch_arg="hailo8" ;;
+            hailo10h) arch_arg="hailo10h" ;;
+            *)
+                log_error "Cannot run installer update: unsupported or unknown HAILO_ARCH (${HAILO_ARCH:-unknown})"
+                record_step_result "FAILED" "Unsupported HAILO_ARCH for update"
+                return 1
+                ;;
+        esac
+
+        local update_flags=""
+        [[ -n "${REQUESTED_DRIVER_VERSION:-}" ]] && update_flags="${update_flags} --driver-version ${REQUESTED_DRIVER_VERSION}"
+        [[ -n "${REQUESTED_HAILORT_VERSION:-}" ]] && update_flags="${update_flags} --hailort-version ${REQUESTED_HAILORT_VERSION}"
+        if [[ -n "${REQUESTED_TAPPAS_VERSION:-}" ]]; then
+            update_flags="${update_flags} --tappas-core-version ${REQUESTED_TAPPAS_VERSION}"
+        fi
+        [[ -n "${BASE_URL_OVERRIDE:-}" ]] && update_flags="${update_flags} --base-url ${BASE_URL_OVERRIDE}"
+
+        local installer_script="${SCRIPT_DIR}/scripts/hailo_installer.sh"
+        if [[ ! -f "${installer_script}" ]]; then
+            log_error "Installer script not found: ${installer_script}"
+            record_step_result "FAILED" "hailo_installer.sh missing"
+            return 1
+        fi
+
+        log_info "Applying requested Hailo package versions (upgrade/update mode)..."
+        log_debug "Running: ${installer_script} ${arch_arg}${update_flags}"
+        if [[ "${DRY_RUN}" == true ]]; then
+            log_dry_run "${installer_script} ${arch_arg}${update_flags}"
+        elif ! "${installer_script}" "${arch_arg}" ${update_flags}; then
+            log_error "Failed to update Hailo system packages"
+            record_step_result "FAILED" "System package update failed"
+            return 1
+        fi
+
+        driver_version="${target_driver_version}"
+        hailort_version="${target_hailort_version}"
+        tappas_version="${target_tappas_version}"
+    fi
+
+    HAILORT_VERSION="${target_hailort_version}"
     local model_zoo_version="${MODEL_ZOO_VER}"
 
     log_info "Detected versions:"
@@ -1074,9 +1157,19 @@ install_python_packages() {
                     ;;
             esac
 
-            if [[ "${INSTALL_HAILORT}" == true && -n "${HAILORT_VERSION}" && "${HAILORT_VERSION}" != "-1" ]]; then
-                flags="${flags} --hailort-version ${HAILORT_VERSION}"
-                log_debug "Installing HailoRT version: ${HAILORT_VERSION}"
+            local hailort_for_python_install="${REQUESTED_HAILORT_VERSION:-${HAILORT_VERSION}}"
+            local tappas_for_python_install="${REQUESTED_TAPPAS_VERSION:-}"
+            if [[ "${INSTALL_HAILORT}" == true && -n "${hailort_for_python_install}" && "${hailort_for_python_install}" != "-1" ]]; then
+                flags="${flags} --hailort-version ${hailort_for_python_install}"
+                log_debug "Installing HailoRT version: ${hailort_for_python_install}"
+            fi
+            if [[ -n "${tappas_for_python_install}" && "${NO_TAPPAS_REQUIRED}" != true ]]; then
+                flags="${flags} --tappas-core-version ${tappas_for_python_install}"
+                log_debug "Installing TAPPAS version: ${tappas_for_python_install}"
+            fi
+            if [[ -n "${BASE_URL_OVERRIDE:-}" ]]; then
+                flags="${flags} --base-url ${BASE_URL_OVERRIDE}"
+                log_debug "Using package base URL override: ${BASE_URL_OVERRIDE}"
             fi
             if [[ "${NO_TAPPAS_REQUIRED}" == true ]]; then
                 flags="${flags} --no-tappas"
