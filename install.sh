@@ -360,6 +360,21 @@ get_model_zoo_version() {
     echo "$mz_version"
 }
 
+# Normalize model-zoo versions to canonical form v<major>.<minor>.0 when possible.
+# Examples: 5.3.0 -> v5.3.0, v5.3.2 -> v5.3.0
+normalize_model_zoo_version() {
+    local input="$1"
+    if [[ -z "$input" ]]; then
+        echo ""
+        return 0
+    fi
+    if [[ "$input" =~ ^v?([0-9]+)\.([0-9]+)(\.[0-9]+)?$ ]]; then
+        echo "v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.0"
+        return 0
+    fi
+    echo "$input"
+}
+
 # Validate Model Zoo version for architecture
 validate_model_zoo_version() {
     local arch="$1"
@@ -827,11 +842,8 @@ check_prerequisites() {
     fi
 
     if [[ -n "${effective_model_zoo_request}" ]]; then
-        if [[ "${effective_model_zoo_request}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            MODEL_ZOO_VER="v${effective_model_zoo_request}"
-        else
-            MODEL_ZOO_VER="${effective_model_zoo_request}"
-        fi
+        MODEL_ZOO_VER="$(normalize_model_zoo_version "${effective_model_zoo_request}")"
+        effective_model_zoo_request="${MODEL_ZOO_VER}"
     fi
 
     # Optional in-place upgrade/update of existing system packages
