@@ -1027,7 +1027,39 @@ install_python_packages() {
     local venv_path="${SCRIPT_DIR}/${VENV_NAME}"
     local venv_activate="${venv_path}/bin/activate"
 
+    # Always run system package installer script (downloads/installs .deb packages)
+    local system_installer="${SCRIPT_DIR}/scripts/hailo_installer.sh"
+    local arch_arg=""
+    local -a installer_flags=()
+
+    if [[ -z "${HAILO_ARCH:-}" || "${HAILO_ARCH}" == "unknown" ]]; then
+        log_error "HAILO_ARCH is required for system package installation (hailo8/hailo8l/hailo10h)."
+        record_step_result "FAILED" "Missing HAILO_ARCH for system install"
+        return 1
+    fi
+
+    case "${HAILO_ARCH}" in
+        hailo8|hailo8l) arch_arg="hailo8" ;;
+        hailo10h) arch_arg="hailo10h" ;;
+        *)
+            log_error "Unsupported HAILO_ARCH value for system installation: ${HAILO_ARCH}"
+            record_step_result "FAILED" "Unsupported HAILO_ARCH for system install"
+            return 1
+            ;;
+    esac
+
+    if [[ -n "${HAILORT_VERSION:-}" && "${HAILORT_VERSION}" != "-1" ]]; then
+        installer_flags+=("--hailort-version" "${HAILORT_VERSION}")
+    fi
+    if [[ -n "${BASE_URL}" ]]; then
+        installer_flags+=("--base-url" "${BASE_URL}")
+    fi
+    if [[ -n "${VERSION_OVERRIDE}" ]]; then
+        installer_flags+=("--tappas-core-version" "${VERSION_OVERRIDE}")
+    fi
+
     if [[ "${DRY_RUN}" == true ]]; then
+        log_dry_run "${system_installer} ${arch_arg} ${installer_flags[*]} --dry-run"
         log_dry_run "source ${venv_activate}"
         log_dry_run "pip install --upgrade pip setuptools wheel"
         [[ -n "$PYHAILORT_PATH" ]] && log_dry_run "pip install '${PYHAILORT_PATH}'"
@@ -1037,6 +1069,19 @@ install_python_packages() {
         log_dry_run "pip install -e ."
         record_step_result "SKIPPED" "Dry-run mode"
         return 0
+    fi
+
+    if [[ ! -f "$system_installer" ]]; then
+        log_error "System installer script not found: ${system_installer}"
+        record_step_result "FAILED" "hailo_installer.sh missing"
+        return 1
+    fi
+
+    log_info "Running system package installer script..."
+    if ! "${system_installer}" "${arch_arg}" "${installer_flags[@]}"; then
+        log_error "System package installer failed"
+        record_step_result "FAILED" "system package installation failed"
+        return 1
     fi
 
     # Install custom wheel files if provided
