@@ -800,6 +800,39 @@ check_prerequisites() {
         esac
     done
 
+    # Some systems install Python bindings only in root/system contexts.
+    # If we were invoked via sudo and user-context detection missed bindings,
+    # retry once as root and use detected Python binding versions as fallback.
+    if [[ ${EUID:-$(id -u)} -eq 0 && -n "${SUDO_USER:-}" ]] && \
+       [[ "$pyhailort_version" == "-1" || ("${NO_TAPPAS_REQUIRED}" != true && "$tappas_python_version" == "-1") ]]; then
+        local root_summary_line
+        disable_error_trap
+        root_summary_line=$("$check_script" 2>&1 | sed -n 's/^SUMMARY: //p')
+        enable_error_trap
+
+        if [[ -n "$root_summary_line" ]]; then
+            log_debug "Root SUMMARY line: $root_summary_line"
+            for pair in $root_summary_line; do
+                local key="${pair%%=*}"
+                local value="${pair#*=}"
+                case "$key" in
+                    pyhailort)
+                        if [[ "$pyhailort_version" == "-1" && "$value" != "-1" ]]; then
+                            pyhailort_version="$value"
+                            log_info "Detected HailoRT Python binding in root/system Python context: $value"
+                        fi
+                        ;;
+                    tappas-python)
+                        if [[ "${NO_TAPPAS_REQUIRED}" != true && "$tappas_python_version" == "-1" && "$value" != "-1" ]]; then
+                            tappas_python_version="$value"
+                            log_info "Detected TAPPAS Python binding in root/system Python context: $value"
+                        fi
+                        ;;
+                esac
+            done
+        fi
+    fi
+
     # Determine Model Zoo version based on architecture
     if [[ -n "${HAILO_ARCH:-}" && "${HAILO_ARCH}" != "unknown" ]]; then
         MODEL_ZOO_VER=$(get_model_zoo_version "${HAILO_ARCH}")
