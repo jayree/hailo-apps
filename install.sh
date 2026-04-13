@@ -833,6 +833,61 @@ check_prerequisites() {
         fi
     fi
 
+    # If Python bindings are still missing, also check the project's virtualenv.
+    # This covers setups where wheels are installed inside ${VENV_NAME}.
+    if [[ "$pyhailort_version" == "-1" || ("${NO_TAPPAS_REQUIRED}" != true && "$tappas_python_version" == "-1") ]]; then
+        local venv_python="${SCRIPT_DIR}/${VENV_NAME}/bin/python3"
+        if [[ -x "$venv_python" ]]; then
+            log_info "Checking Python bindings in virtualenv: ${SCRIPT_DIR}/${VENV_NAME}"
+
+            if [[ "$pyhailort_version" == "-1" ]]; then
+                local venv_pyhailort_version
+                venv_pyhailort_version=$("$venv_python" -c "
+import importlib.metadata as m
+candidates = ('hailort', 'hailo-platform', 'hailo_platform', 'hailo-all')
+for name in candidates:
+    try:
+        print(m.version(name))
+        raise SystemExit(0)
+    except Exception:
+        pass
+print('-1')
+" 2>/dev/null || echo "-1")
+                if [[ -n "$venv_pyhailort_version" && "$venv_pyhailort_version" != "-1" ]]; then
+                    pyhailort_version="$venv_pyhailort_version"
+                    log_info "Detected HailoRT Python binding in virtualenv: $venv_pyhailort_version"
+                fi
+            fi
+
+            if [[ "${NO_TAPPAS_REQUIRED}" != true && "$tappas_python_version" == "-1" ]]; then
+                local venv_tappas_python_version
+                venv_tappas_python_version=$("$venv_python" -c "
+import importlib.metadata as m
+candidates = (
+    'hailo-tappas-core-python-binding',
+    'tappas-core-python-binding',
+    'hailo-tappas-python-binding',
+    'tappas',
+    'hailo-platform',
+    'hailo_platform',
+    'hailo-all',
+)
+for name in candidates:
+    try:
+        print(m.version(name))
+        raise SystemExit(0)
+    except Exception:
+        pass
+print('-1')
+" 2>/dev/null || echo "-1")
+                if [[ -n "$venv_tappas_python_version" && "$venv_tappas_python_version" != "-1" ]]; then
+                    tappas_python_version="$venv_tappas_python_version"
+                    log_info "Detected TAPPAS Python binding in virtualenv: $venv_tappas_python_version"
+                fi
+            fi
+        fi
+    fi
+
     # Determine Model Zoo version based on architecture
     if [[ -n "${HAILO_ARCH:-}" && "${HAILO_ARCH}" != "unknown" ]]; then
         MODEL_ZOO_VER=$(get_model_zoo_version "${HAILO_ARCH}")
