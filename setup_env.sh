@@ -13,14 +13,30 @@
 # Define virtual environment name
 VENV_NAME="venv_hailo_apps"
 
+# Determine source/execution mode at top-level context.
+if [ -n "$ZSH_VERSION" ]; then
+    case "${ZSH_EVAL_CONTEXT:-}" in
+        *:file) __SCRIPT_IS_SOURCED=1 ;;
+        *) __SCRIPT_IS_SOURCED=0 ;;
+    esac
+elif [ -n "$BASH_VERSION" ]; then
+    if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+        __SCRIPT_IS_SOURCED=1
+    else
+        __SCRIPT_IS_SOURCED=0
+    fi
+else
+    __SCRIPT_IS_SOURCED=0
+fi
+
 # Function to check if the script is being sourced
 is_sourced() {
-    if [ -n "$ZSH_VERSION" ]; then
-        [[ -o sourced ]]
-    elif [ -n "$BASH_VERSION" ]; then
-        [[ "${BASH_SOURCE[0]}" != "$0" ]]
-    else
+    if [ "$__SCRIPT_IS_SOURCED" -eq 1 ]; then
+        return 0
+    elif [ -z "$ZSH_VERSION" ] && [ -z "$BASH_VERSION" ]; then
         echo "Unsupported shell. Please use bash or zsh."
+        return 1
+    else
         return 1
     fi
 }
